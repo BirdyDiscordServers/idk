@@ -1,0 +1,108 @@
+const Discord = require('discord.js');
+const bot = new Discord.Client();
+const settings = require('./settings.json');
+const commands = require('./commands.js');
+const yt = require('ytdl-core');
+const dateFormat = require('dateformat');
+const mongoose = require('mongoose');
+const now = new Date();
+const snek = require('snekfetch');
+const log = require('fancy-log');
+var curTime = dateFormat(now, "UTC:h:MM:ss TT Z");
+const token = require('./settings.json').token;
+var prefix = "∅";
+
+var curTime = dateFormat(now, "UTC:h:MM:ss TT Z");
+
+
+bot.on("ready", () => {
+    log("BoOty");
+    bot.user.setActivity("Monospacin'");
+  })
+
+bot.on('guildCreate', g => {
+    var jsonfile = require('jsonfile')
+    var file = './users.json'
+    jsonfile.readFile(file, function(err, obj) {
+      console.dir(obj)
+    })
+    const channel = g.channels.find("name", "mod-logs");
+    if(!channel) {
+        g.channels.create('mod-logs', "text").then(c => {
+            c.send("hi");
+        });
+    }else {
+        log(`INFO > Logs channel found on ${g.name}`)
+    }
+    var role2 = g.roles.find("name", "muted");
+    if(!role2){
+        g.roles.create({
+            name: 'muted',
+            color: 'GREY',
+        }).then(role =>{
+            log(`INFO > Created muted role ${role} on ${g.name} (${g.id})`);
+            g.channels.filter(channel => channel.type === "text").forEach(channel => channel.overwritePermissions(g.roles.find("name", "muted"), {"SEND_MESSAGES": false}));
+        })
+    }else {
+        log(`INFO > muted role found on ${g.name}`);
+    }
+})
+
+bot.on('guildMemberRemove', member => {
+    let guild = member.guild;
+    const channel = guild.channels.find("name", "mod-logs");
+    channel.send(` \`${curTime}\` :dizzy_face: > ${member} (\`${member.id}\`) left`);
+    log(`LOG > ${member.user.username} (${member.id}) left ${guild.name}`);
+})
+bot.on('messageDelete', msg => {
+    const channel = msg.guild.channels.find("name", "mod-logs");
+    channel.send(` \`${curTime}\` 🗑 > ${msg.author} (\`${msg.author.id}\`) deleted this msg` + " \n`" + msg + "`");
+    console.log(`LOG > ${msg.author} (${msg.author.id}) deleted a msg(${msg.id}) ${msg.guild.name}`);
+})
+
+bot.on('messageUpdate', (oldMessage, newMessage) => {
+    let guild = oldMessage.guild;
+    let member = oldMessage.member;
+    const channel = guild.channels.find("name", "mod-logs");
+    if(member.id === "294882584201003009" || member.id === "401894658541879296" || member.id === "235088799074484224" || member.id === "273591274899111937" || oldMessage.content.includes("https://www.youtube.com/channel/")){
+        log(`LOG > ${member.user.username} ${member.id} edited a msg in ${guild.name} (${guild.id})`);
+    }else {
+        channel.send(` \`${curTime}\` :pencil: > ${member} (\`${member.id}\`) edited a message in channel - \`${newMessage.channel.name}\`,\r\nA: \`${oldMessage}\` \r\n\B: \`${newMessage}\``);
+        log(`LOG > ${member.user.username} ${member.id} edited a msg in ${guild.name} (${guild.id})`);
+    }
+})
+
+bot.on("guildMemberAdd", member => {
+    let guild = member.guild;
+    const channel = guild.channels.find("name", "mod-logs");
+    channel.send(`\`${curTime}\` :wave: > ${member} (\`${member.id}\`) joined`);
+    log(`LOG > ${member.user.username} (${member.id}) joined ${guild.name}`);
+})
+
+// bot.on("emojiCreate", emoji => {
+//     const channel = guild.channels.find("name", "mod-logs");
+//     channel.send(`new emoji ${emoji}`)
+// })
+
+bot.on("message", msg => {
+    if (msg.author.bot) return;
+    var isMention = /^<@\d+?>.+/.test(msg.content) && msg.mentions.users && msg.mentions.users.size === 1 && msg.mentions.users.has(bot.user.id);
+    if (msg.content.startsWith(prefix) || msg.channel.type ∅== "text" || isMention) {
+        var content = msg.content.split(" ");
+        let args = msg.content.split(' ').slice(1);
+        if (isMention) content.shift();
+        msg.content = content.join(" ");
+        var command = content[0].toLowerCase();
+        var cmd2 = command + " " + args;
+        const searchString = args.slice(1).join(' ');
+        const url = args[1] ? args[1].replace(/<(.+)>/g, '$1') : '';
+        const logsChannel = msg.guild.channels.find('name', 'mod-logs');
+        const serverQueue = queue.get(msg.guild.id);
+        logsChannel.send(`\`${curTime}\` 🔧 > ${msg.author} used command in **#${msg.channel.name}** \`${cmd2}\``);
+        if (command.startsWith(prefix)) command = command.replace(prefix, "");
+
+        (commands[command] || commands.default)(msg , bot, url, searchString, serverQueue);
+    }
+})
+
+bot.login(token);
